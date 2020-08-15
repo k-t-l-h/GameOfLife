@@ -1,28 +1,61 @@
 package main
 
 import (
+	"encoding/json"
+	"github.com/gorilla/mux"
 	"golang.org/x/exp/rand"
 	"log"
+	"net/http"
 	"time"
 )
 
+const FSIZE  = 8
+
+var matrix [][]int
+
+func init() {
+	rand.Seed(uint64(time.Now().Unix()))
+	matrix = initField()
+	matrix = randomizeField(matrix)
+}
+
 func main() {
 
-	rand.Seed(uint64(time.Now().Unix()))
-	m := initField()
-	n := randomizeField(m)
-	log.Print("\n")
-	nb := getNeighbours(n)
-	log.Print("\n")
-	nextField(n, nb)
+	r := mux.NewRouter()
+	r.HandleFunc("/game", GetNext).Methods("GET")
+
+	srv := &http.Server{
+		Handler: r,
+		Addr:    ":6000",
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+	}
+
+	log.Print("Running on :6000")
+	log.Print(srv.ListenAndServe())
 
 }
 
+func GetNext(writer http.ResponseWriter, request *http.Request) {
+	nb := getNeighbours(matrix)
+	matrix = nextField(matrix, nb)
+
+
+	writer.Header().Set("Content-Type", "application/json")
+	err := json.NewEncoder(writer).Encode(matrix)
+	if err != nil {
+		return
+	}
+	log.Print(err)
+}
+
+
+
 //init the game field
 func initField() [][]int {
-	matrix := make([][]int, 5)
+	matrix := make([][]int, FSIZE)
 	for m := range matrix {
-		matrix[m] = make([]int, 5)
+		matrix[m] = make([]int, FSIZE)
 	}
 	return matrix
 }
@@ -40,21 +73,21 @@ func randomizeField(matrix [][]int) [][]int{
 
 func getNeighbours(matrix [][]int) [][]int {
 
-	neighbours := make([][]int, 5)
+	neighbours := make([][]int, FSIZE)
 	for m := range neighbours {
-		neighbours[m] = make([]int, 5)
+		neighbours[m] = make([]int, FSIZE)
 	}
 
 	for i := range matrix {
 		for j := range matrix[i] {
-			neighbours[i][j] += matrix[(5 + i-1) % 5][(5 + j-1) % 5]
-			neighbours[i][j] += matrix[(5 + i-1) % 5][j]
-			neighbours[i][j] += matrix[(5 + i-1) % 5][(5 + j+1) % 5]
-			neighbours[i][j] += matrix[i][(5 + j-1) % 5]
-			neighbours[i][j] += matrix[i][(5 + j+1) % 5]
-			neighbours[i][j] += matrix[(5 + i+1) % 5][(5 + j-1) % 5]
-			neighbours[i][j] += matrix[(5 + i+1) % 5][j]
-			neighbours[i][j] += matrix[(5 + i+1) % 5][(5 + j+1) % 5]
+			neighbours[i][j] += matrix[(FSIZE + i-1) % FSIZE][(FSIZE + j-1) % FSIZE]
+			neighbours[i][j] += matrix[(FSIZE + i-1) % FSIZE][j]
+			neighbours[i][j] += matrix[(FSIZE + i-1) % FSIZE][(FSIZE + j+1) % FSIZE]
+			neighbours[i][j] += matrix[i][(FSIZE + j-1) % FSIZE]
+			neighbours[i][j] += matrix[i][(FSIZE + j+1) % FSIZE]
+			neighbours[i][j] += matrix[(FSIZE + i+1) % FSIZE][(FSIZE + j-1) % FSIZE]
+			neighbours[i][j] += matrix[(FSIZE + i+1) % FSIZE][j]
+			neighbours[i][j] += matrix[(FSIZE + i+1) % FSIZE][(FSIZE + j+1) % FSIZE]
 		}
 		log.Print(neighbours[i])
 	}
@@ -62,11 +95,11 @@ func getNeighbours(matrix [][]int) [][]int {
 	return neighbours
 }
 
-func nextField(matrix, neighbours[][]int) {
+func nextField(matrix, neighbours [][]int) [][]int {
 
-	mt := make([][]int, 5)
+	mt := make([][]int, FSIZE)
 	for m := range mt {
-		mt[m] = make([]int, 5)
+		mt[m] = make([]int, FSIZE)
 	}
 
 
@@ -88,5 +121,5 @@ func nextField(matrix, neighbours[][]int) {
 		log.Print(mt[i])
 	}
 
-
+	return mt
 }
