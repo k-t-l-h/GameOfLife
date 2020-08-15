@@ -7,7 +7,7 @@ ENV GO111MODULE=on
 
 ADD . /opt/app
 WORKDIR /opt/app
-RUN go build ./main.go
+RUN go build ./game.go
 
 FROM ubuntu:20.04
 
@@ -18,6 +18,6 @@ USER root
 WORKDIR /usr/src/app
 
 COPY . .
-COPY --from=build /opt/app/main .
+COPY --from=build /opt/app/game .
 
-CMD ./main
+CMD ./game
