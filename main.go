@@ -6,24 +6,26 @@ import (
 	"golang.org/x/exp/rand"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 )
 
 //TODO: добавить конфигурацию
-const FSIZE = 30
+const FSIZE = 400
 
 var matrix [][]int
 var index [][][]int
 
 func init() {
 	rand.Seed(uint64(time.Now().Unix()))
+
 	matrix = initField()
 	matrix = randomizeField(matrix)
 	index = generateIndexes()
 
 }
 
-func generateIndexes() [][][]int{
+func generateIndexes() [][][]int {
 
 	//создание матрицы индексов
 	matrix := make([][][]int, FSIZE)
@@ -94,7 +96,7 @@ func main() {
 
 	srv := &http.Server{
 		Handler:      r,
-		Addr:         ":6000",
+		Addr:         "127.0.0.1:4000",
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
@@ -105,14 +107,17 @@ func main() {
 }
 
 func GetNext(writer http.ResponseWriter, request *http.Request) {
-	nb := getNeighbours(matrix)
-	matrix = nextField(matrix, nb)
+
+	t := time.Now()
+	matrix = nextField(matrix)
+	log.Print(time.Since(t))
 
 	writer.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(writer).Encode(matrix)
+	err := json.NewEncoder(writer).Encode(matrix[0][0])
 	if err != nil {
 		return
 	}
+
 	log.Print(err)
 }
 
@@ -131,54 +136,48 @@ func randomizeField(matrix [][]int) [][]int {
 		for j := range matrix[i] {
 			matrix[i][j] = rand.Intn(2)
 		}
-		log.Print(matrix[i])
 	}
 	return matrix
 }
 
-func getNeighbours(matrix [][]int) [][]int {
-
-	neighbours := make([][]int, FSIZE)
-	for m := range neighbours {
-		neighbours[m] = make([]int, FSIZE)
-	}
-
-	for i := range matrix {
-		for j := range matrix[i] {
-			for n := 0; n < (len(index[i][j])>>1); n++ {
-				neighbours[i][j] += matrix[(index[i][j][2*n])][(index[i][j][2*n+1])]
-			}
-		}
-		log.Print(neighbours[i])
-	}
-
-	return neighbours
-}
-
-func nextField(matrix, neighbours [][]int) [][]int {
+func nextField(matrix [][]int) [][]int {
 
 	mt := make([][]int, FSIZE)
 	for m := range mt {
 		mt[m] = make([]int, FSIZE)
 	}
 
+	var wg sync.WaitGroup
+
 	for i := range matrix {
 		for j := range matrix[i] {
 
-			if matrix[i][j] == 0 {
-				if neighbours[i][j] == 3 {
-					mt[i][j] = 1
+			wg.Add(1)
+			go func(i, j int) {
+				neighbours := 0
+
+				for n := 0; n < (len(index[i][j]) >> 1); n += 2 {
+					neighbours += matrix[(index[i][j][n])][(index[i][j][n+1])]
 				}
 
-			} else {
-				if neighbours[i][j] == 3 || neighbours[i][j] == 2 {
-					mt[i][j] = 1
+				if matrix[i][j] == 0 {
+					if neighbours == 3 {
+						mt[i][j] = 1
+					}
+
+				} else {
+					if neighbours == 3 || neighbours == 2 {
+						mt[i][j] = 1
+					}
 				}
-			}
+
+				wg.Done()
+			}(i, j)
+
 		}
-
-		log.Print(mt[i])
 	}
+
+	wg.Wait()
 
 	return mt
 }
