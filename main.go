@@ -6,19 +6,20 @@ import (
 	"golang.org/x/exp/rand"
 	"log"
 	"net/http"
-	"sync"
 	"time"
 )
 
 //TODO: добавить конфигурацию
-const FSIZE = 400
+const FSIZE = 8
 
 var matrix [][]int
 var index [][][]int
 
 func init() {
+	//TODO: задать зерно через crypto
 	rand.Seed(uint64(time.Now().Unix()))
 
+	//инициализация глобальных переменных
 	matrix = initField()
 	matrix = randomizeField(matrix)
 	index = generateIndexes()
@@ -26,6 +27,8 @@ func init() {
 }
 
 func generateIndexes() [][][]int {
+	//матрица векторов индексов клеток-соседей
+	//индекс на четном месте определяет строчку, на нечетном столбец
 
 	//создание матрицы индексов
 	matrix := make([][][]int, FSIZE)
@@ -36,7 +39,7 @@ func generateIndexes() [][][]int {
 		}
 	}
 
-	//обработка краевых точек с 3 соседями
+	//обработка угловых клеток (с 3 соседями)
 	//левая верхняя
 	matrix[0][0] = []int{0, 1,
 		1, 1,
@@ -54,7 +57,7 @@ func generateIndexes() [][][]int {
 		FSIZE - 2, FSIZE - 2,
 		FSIZE - 2, FSIZE - 1}
 
-	//обработка краевых рядов с 5 соседями (краевые точки исключены)
+	//обработка краевых клеток (с 5 соседями, краевые клетки исключены)
 	//левый ряд
 	for i := 1; i < FSIZE-1; i++ {
 		matrix[i][0] = []int{i - 1, 0, i + 1, 0, i + 1, 1, i, 1, i - 1, 1}
@@ -75,7 +78,7 @@ func generateIndexes() [][][]int {
 		matrix[FSIZE-1][i] = []int{FSIZE - 1, i - 1, FSIZE - 1, i + 1, FSIZE - 2, i - 1, FSIZE - 2, i, FSIZE - 2, i + 1}
 	}
 
-	//обработка внутреннего квадрата, все 9 соседей
+	//обработка внутреннего квадрата (все 8 соседей)
 	for i := 1; i < FSIZE-1; i++ {
 		for j := 1; j < FSIZE-1; j++ {
 			left := i - 1
@@ -89,39 +92,7 @@ func generateIndexes() [][][]int {
 	return matrix
 }
 
-func main() {
-
-	r := mux.NewRouter()
-	r.HandleFunc("/game", GetNext).Methods("GET")
-
-	srv := &http.Server{
-		Handler:      r,
-		Addr:         "127.0.0.1:4000",
-		WriteTimeout: 15 * time.Second,
-		ReadTimeout:  15 * time.Second,
-	}
-
-	log.Print("Running on :6000")
-	log.Print(srv.ListenAndServe())
-
-}
-
-func GetNext(writer http.ResponseWriter, request *http.Request) {
-
-	t := time.Now()
-	matrix = nextField(matrix)
-	log.Print(time.Since(t))
-
-	writer.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(writer).Encode(matrix[0][0])
-	if err != nil {
-		return
-	}
-
-	log.Print(err)
-}
-
-//init the game field
+//инициализация глобальной структуры
 func initField() [][]int {
 	matrix := make([][]int, FSIZE)
 	for m := range matrix {
@@ -130,6 +101,7 @@ func initField() [][]int {
 	return matrix
 }
 
+//заполнение поля случайными значениями
 func randomizeField(matrix [][]int) [][]int {
 
 	for i := range matrix {
@@ -140,44 +112,80 @@ func randomizeField(matrix [][]int) [][]int {
 	return matrix
 }
 
+//получение нового поля на основе текущего состояния
 func nextField(matrix [][]int) [][]int {
 
+	//создание новой матрицы
 	mt := make([][]int, FSIZE)
 	for m := range mt {
 		mt[m] = make([]int, FSIZE)
 	}
 
-	var wg sync.WaitGroup
-
 	for i := range matrix {
 		for j := range matrix[i] {
 
-			wg.Add(1)
-			go func(i, j int) {
-				neighbours := 0
+			neighbours := 0
 
-				for n := 0; n < (len(index[i][j]) >> 1); n += 2 {
-					neighbours += matrix[(index[i][j][n])][(index[i][j][n+1])]
+			//подсчёт количества живых соседей
+			for n := 0; n < (len(index[i][j]) >> 1); n += 2 {
+				neighbours += matrix[(index[i][j][n])][(index[i][j][n+1])]
+			}
+
+			//определение состояния клетки
+			if matrix[i][j] == 0 {
+				if neighbours == 3 {
+					mt[i][j] = 1
 				}
 
-				if matrix[i][j] == 0 {
-					if neighbours == 3 {
-						mt[i][j] = 1
-					}
-
-				} else {
-					if neighbours == 3 || neighbours == 2 {
-						mt[i][j] = 1
-					}
+			} else {
+				if neighbours == 3 || neighbours == 2 {
+					mt[i][j] = 1
 				}
-
-				wg.Done()
-			}(i, j)
+			}
 
 		}
 	}
-
-	wg.Wait()
-
 	return mt
+}
+
+func GetNext(writer http.ResponseWriter, request *http.Request) {
+
+	matrix = nextField(matrix)
+
+	writer.Header().Set("Content-Type", "application/json")
+	err := json.NewEncoder(writer).Encode(matrix[0][0])
+	if err != nil {
+		return
+	}
+
+}
+
+func Resurrect(writer http.ResponseWriter, request *http.Request) {
+
+	matrix = randomizeField(matrix)
+
+	writer.Header().Set("Content-Type", "application/json")
+	err := json.NewEncoder(writer).Encode(matrix)
+	if err != nil {
+		return
+	}
+
+}
+
+func main() {
+
+	r := mux.NewRouter()
+	r.HandleFunc("/game", GetNext).Methods("GET")
+	r.HandleFunc("/new", Resurrect).Methods("GET")
+
+	srv := &http.Server{
+		Handler:      r,
+		Addr:         ":6000",
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+	}
+
+	log.Print("Running on :6000")
+	log.Print(srv.ListenAndServe())
+
 }
