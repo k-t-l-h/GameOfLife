@@ -1,0 +1,11 @@
+syntax="proto3";
+
+package protomsg;
+
+
+message field {
+    message line {
+        repeated int32 field = 300;
+    }
+    repeated line array = 300;
+};
