@@ -1,3 +1,4 @@
+#конкретная версия
 FROM golang:1.13 AS build
 
 ENV TZ=Russia/Moscow
@@ -9,6 +10,7 @@ ADD . /opt/app
 WORKDIR /opt/app
 RUN go build ./main.go
 
+#конкретная версия убунты
 FROM ubuntu:20.04
 
 EXPOSE 6000

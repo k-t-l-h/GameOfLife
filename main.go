@@ -1,7 +1,7 @@
 package main
 
 import (
-	"./protomsg"
+	"GameOfLife/protomsg"
 	"encoding/json"
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/mux"
@@ -12,7 +12,7 @@ import (
 )
 
 //TODO: добавить конфигурацию
-const FSIZE = 300
+const FSIZE = 1000
 
 var matrix [][]int32
 var index [][][]int32
@@ -221,7 +221,7 @@ func main() {
 
 	srv := &http.Server{
 		Handler:      r,
-		Addr:         ":6000",
+		Addr:         "127.0.0.1:5000",
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
