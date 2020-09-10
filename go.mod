@@ -1,4 +1,4 @@
-module "github.com/k-t-l-h/GameOfLife"
+module github.com/k-t-l-h/GameOfLife
 
 go 1.13
 

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"GameOfLife/protomsg"
+	"github.com/k-t-l-h/GameOfLife/protomsg"
 	"encoding/json"
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/mux"
