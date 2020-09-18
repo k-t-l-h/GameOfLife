@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/k-t-l-h/GameOfLife/protomsg"
 	"encoding/json"
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/mux"
+	"github.com/k-t-l-h/GameOfLife/protomsg"
 	"golang.org/x/exp/rand"
 	"log"
 	"net/http"
@@ -12,7 +12,7 @@ import (
 )
 
 //TODO: добавить конфигурацию
-const FSIZE = 1000
+const FSIZE = 100
 
 var matrix [][]int32
 var index [][][]int32
