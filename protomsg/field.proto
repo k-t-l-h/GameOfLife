@@ -5,7 +5,7 @@ option go_package = "./protomsg";
 
 message field {
     message line {
-        repeated int32 field = 1000;
+        repeated int32 field = 100;
     }
-    repeated line array = 1000;
+    repeated line array = 100;
 };
